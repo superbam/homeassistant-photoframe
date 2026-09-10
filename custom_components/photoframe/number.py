@@ -17,7 +17,7 @@ from dataclasses import dataclass
 
 from homeassistant.components.number import NumberEntity, NumberEntityDescription
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import EntityCategory, UnitOfTime
+from homeassistant.const import PERCENTAGE, EntityCategory, UnitOfTime
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
@@ -107,7 +107,41 @@ async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> None:
     coordinator = entry.runtime_data
-    async_add_entities(PhotoFrameNumber(coordinator, entry, description) for description in NUMBERS)
+    entities: list[NumberEntity] = [PhotoFrameBrightness(coordinator, entry)]
+    entities.extend(PhotoFrameNumber(coordinator, entry, description) for description in NUMBERS)
+    async_add_entities(entities)
+
+
+class PhotoFrameBrightness(PhotoFrameEntity, NumberEntity):
+    """A plain 0-100% slider for `POST /api/brightness` (spec #7/#8).
+
+    Kept separate from the generic ``PhotoFrameNumber`` below because it
+    doesn't go through ``/api/settings`` like every other number does — it
+    calls the frame's dedicated brightness endpoint, the same one the web
+    settings page's own brightness slider uses (see HomeAssistant.md). Reads
+    off `status` rather than `settings` for the same reason `light.py`'s
+    brightness attribute does: it's the live value, not just the persisted
+    setting.
+    """
+
+    _attr_translation_key = "brightness"
+    _attr_icon = "mdi:brightness-6"
+    _attr_native_unit_of_measurement = PERCENTAGE
+    _attr_native_min_value = 0
+    _attr_native_max_value = 100
+    _attr_native_step = 1
+
+    def __init__(self, coordinator, entry: ConfigEntry) -> None:
+        super().__init__(coordinator, entry, "brightness")
+
+    @property
+    def native_value(self) -> float | None:
+        value = self.coordinator.data["status"].get("brightness")
+        return round(float(value) * 100) if value is not None else None
+
+    async def async_set_native_value(self, value: float) -> None:
+        await self.coordinator.client.async_set_brightness(value / 100)
+        await self.coordinator.async_request_refresh()
 
 
 class PhotoFrameNumber(PhotoFrameEntity, NumberEntity):

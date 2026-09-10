@@ -51,6 +51,7 @@ has a matching entity:
 | `binary_sensor.<frame>_paused` | Playback state (not a persisted setting — toggle it with the play/pause buttons below) |
 | `button.<frame>_next_slide`, `_previous_slide`, `_play`, `_pause`, `_ping_presence` | One-shot actions |
 | `switch.<frame>_*` | Every boolean setting: mute video, shuffle, schedule enabled, motion blanking, external presence, collage mode, randomize transitions, blur edges, show clock/caption/location/weather/calendar, use device location for weather, 24-hour clock, video-plays-to-completion, Live Photo playback/repeat/loop/per-photo overrides, download cache |
+| `number.<frame>_brightness` | Plain 0-100% brightness slider (via `/api/brightness`, same endpoint the light entity's brightness and the web page's own slider use) |
 | `number.<frame>_*` | Slide duration, transition duration, blur amount, motion blank timeout, download cache cap, Live Photo trim start/end |
 | `select.<frame>_*` | Transition style (all 10), scale mode (fit/fill), clock size, collage grid size (2/4/6) |
 | `text.<frame>_weather_location` | Manual weather location (when not using device location) |

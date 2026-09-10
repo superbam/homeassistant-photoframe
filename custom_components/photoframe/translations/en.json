@@ -82,6 +82,7 @@
       "download_cache": { "name": "Download cache" }
     },
     "number": {
+      "brightness": { "name": "Brightness" },
       "slide_duration": { "name": "Slide duration" },
       "transition_duration": { "name": "Transition duration" },
       "blur_amount": { "name": "Blur amount" },
