@@ -68,7 +68,33 @@ Deliberately **not** exposed, with reasons:
   fetch; better done on the frame directly for now.
 
 Polling interval defaults to 30s, adjustable per frame via the integration's
-"Configure" options.
+"Configure" options — but that's now a fallback, not the primary path. See
+below.
+
+## Instant on/off updates (webhook)
+
+By default, `light.<frame>_display`'s on/off state is only as fresh as the
+last poll — up to the configured interval — which is slow for a
+schedule/presence-triggered blank or wake that happens on the frame itself
+rather than through Home Assistant.
+
+Setup creates a persistent notification with a webhook URL, e.g.:
+```
+https://your-ha:8123/api/webhook/<long-id>
+```
+Paste it into the frame's **Home Assistant webhook URL** setting (web
+settings page, or the on-device Settings screen) and the frame will POST its
+on/off state the instant it changes — the notification dismisses itself once
+the first push arrives. Leave it blank to skip this entirely; polling still
+works exactly as before.
+
+This isn't a replacement for polling, it's a supplement: if nothing (a push
+or a poll) has been heard from the frame in one fallback-polling-interval's
+worth of time, the coordinator polls for real, same as always. In practice
+that means a configured webhook makes real polling rare rather than
+eliminating it — actual request volume against the frame goes *down*
+compared to tightening the poll interval, since a push only fires on real
+transitions instead of every tick regardless of change.
 
 ## Notes
 

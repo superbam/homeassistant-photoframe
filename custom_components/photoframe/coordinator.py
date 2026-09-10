@@ -7,6 +7,16 @@ blob — everything the web settings page can edit). Kept separate in
 since they use different key-naming conventions (status is a hand-picked
 snake_case-ish summary; settings is the app's `AppSettings` struct encoded
 verbatim, camelCase) and partially overlap (e.g. both carry `brightness`).
+
+Polling is a fallback, not the primary path. Frames new enough to push
+(see `__init__.py`'s webhook registration) call `async_handle_push()` on
+every on/off or brightness change; that calls `async_set_updated_data()`,
+which — same as a normal successful poll — reschedules the coordinator's
+own timer `update_interval` out from *now*. So as long as pushes keep
+arriving, a real poll (an actual round trip to the device) never happens;
+one only fires if nothing, push or poll, has been heard in `update_interval`
+seconds. Older frames that don't know how to push yet never call it, so
+they transparently keep getting today's pure-polling behavior.
 """
 
 from __future__ import annotations
@@ -23,6 +33,13 @@ from .api import PhotoFrameAuthError, PhotoFrameClient, PhotoFrameConnectionErro
 
 _LOGGER = logging.getLogger(__name__)
 
+# Keys a webhook push is trusted to update. The webhook has no auth beyond
+# the id being unguessable, so pushes are merged onto the last-known status
+# rather than replacing it, and only for the couple of fields the frame
+# actually reports on a display change — not arbitrary attacker-controlled
+# state for every entity that reads `status`.
+_PUSHABLE_STATUS_KEYS = {"on", "brightness"}
+
 
 class PhotoFrameData(TypedDict):
     status: dict[str, Any]
@@ -30,7 +47,7 @@ class PhotoFrameData(TypedDict):
 
 
 class PhotoFrameCoordinator(DataUpdateCoordinator[PhotoFrameData]):
-    """Fetches /api/status + /api/settings on an interval."""
+    """Fetches /api/status + /api/settings on an interval, as a fallback for push."""
 
     def __init__(self, hass: HomeAssistant, client: PhotoFrameClient, name: str, scan_interval: int) -> None:
         super().__init__(
@@ -40,6 +57,13 @@ class PhotoFrameCoordinator(DataUpdateCoordinator[PhotoFrameData]):
             update_interval=timedelta(seconds=scan_interval),
         )
         self.client = client
+        # In-memory only (not persisted to the config entry) — __init__.py
+        # reads this to decide whether to show/dismiss the "go configure the
+        # webhook" notification. Persisting it would mean writing entry.data
+        # from inside the webhook handler, which would fire this integration's
+        # own update listener and reload the whole entry on the very first
+        # push, tearing down the coordinator mid-flight.
+        self.webhook_seen = False
 
     async def _async_update_data(self) -> PhotoFrameData:
         try:
@@ -50,3 +74,15 @@ class PhotoFrameCoordinator(DataUpdateCoordinator[PhotoFrameData]):
         except PhotoFrameConnectionError as err:
             raise UpdateFailed(str(err)) from err
         return {"status": status, "settings": settings}
+
+    def async_handle_push(self, payload: dict[str, Any]) -> None:
+        """Merge an instant webhook push and defer the next fallback poll."""
+        self.webhook_seen = True
+        if not self.data:
+            return
+        changes = {k: v for k, v in payload.items() if k in _PUSHABLE_STATUS_KEYS}
+        if not changes:
+            return
+        self.async_set_updated_data(
+            {"status": {**self.data["status"], **changes}, "settings": self.data["settings"]}
+        )
