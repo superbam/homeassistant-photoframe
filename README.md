@@ -37,18 +37,34 @@ real one for) is handled automatically — nothing to configure.
 
 ## Entities
 
-Each frame becomes one device with:
+Each frame becomes one device. Close to everything on the web settings page
+has a matching entity:
 
 | Entity | What it does |
 |---|---|
-| `light.<frame>_display` | On/off and brightness, mapped to `/api/brightness` (brightness `0` blanks the screen) |
+| `light.<frame>_display` | On/off (via `/api/display` — the same non-destructive blank/wake override the web page's "Blank now"/"Wake now" buttons use) and brightness (via `/api/brightness`, which persists the on-brightness, same as the web page's slider) |
 | `sensor.<frame>_photos` | Photo count |
 | `sensor.<frame>_slide_position` | Current index, with total/kind/id/date as attributes |
-| `sensor.<frame>_slide_duration`, `_transition_style` | Playback settings |
 | `sensor.<frame>_memory_usage`, `_peak_memory_usage` | Diagnostics |
 | `sensor.<frame>_last_library_sync` | Timestamp of the last iCloud shared-album sync |
-| `binary_sensor.<frame>_muted`, `_paused`, `_shuffle`, `_schedule_enabled` | Status flags |
+| `sensor.<frame>_schedule_on_time`, `_schedule_off_time` | Read-only — the JSON settings API doesn't accept writes to the schedule clock times, only the HTML form does |
+| `binary_sensor.<frame>_paused` | Playback state (not a persisted setting — toggle it with the play/pause buttons below) |
 | `button.<frame>_next_slide`, `_previous_slide`, `_play`, `_pause`, `_ping_presence` | One-shot actions |
+| `switch.<frame>_*` | Every boolean setting: mute video, shuffle, schedule enabled, motion blanking, external presence, collage mode, randomize transitions, blur edges, show clock/caption/location/weather/calendar, use device location for weather, 24-hour clock, video-plays-to-completion, Live Photo playback/repeat/loop/per-photo overrides, download cache |
+| `number.<frame>_*` | Slide duration, transition duration, blur amount, motion blank timeout, download cache cap, Live Photo trim start/end |
+| `select.<frame>_*` | Transition style (all 10), scale mode (fit/fill), clock size, collage grid size (2/4/6) |
+| `text.<frame>_weather_location` | Manual weather location (when not using device location) |
+
+Deliberately **not** exposed, with reasons:
+- `webServerEnabled` — turning it off from Home Assistant would sever the
+  very connection this integration uses; the one setting that could brick
+  itself from inside itself.
+- `frameName`, `webUsername` — editing either risks breaking this config
+  entry's stored identity/auth.
+- Frame sync (`syncFrames`/`syncAlbum`/`syncGroupCode`), calendar selection,
+  and shared-album selection — each needs a picker over a list the device
+  itself holds (its own calendars/albums), which there's no endpoint to
+  fetch; better done on the frame directly for now.
 
 Polling interval defaults to 30s, adjustable per frame via the integration's
 "Configure" options.
@@ -57,6 +73,8 @@ Polling interval defaults to 30s, adjustable per frame via the integration's
 
 - The app must be in the foreground for its server to run — normal for a
   wall-mounted, always-on frame.
-- This integration only covers what `/api/status` exposes. For anything
-  else, the app's REST API is documented directly in the main repo's
+- Every setting the web page's HTML form can write, the JSON settings API can
+  too, with one exception: the schedule's on/off clock times (see the table
+  above) — those stay read-only here.
+- The app's REST API is documented directly in the main repo's
   [`HomeAssistant.md`](https://github.com/superbam/PictureFrame/blob/main/HomeAssistant.md).

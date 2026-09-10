@@ -44,13 +44,12 @@
       "transition": { "name": "Transition style" },
       "memory_usage": { "name": "Memory usage" },
       "peak_memory_usage": { "name": "Peak memory usage" },
-      "last_sync": { "name": "Last library sync" }
+      "last_sync": { "name": "Last library sync" },
+      "schedule_on_time": { "name": "Schedule on time" },
+      "schedule_off_time": { "name": "Schedule off time" }
     },
     "binary_sensor": {
-      "muted": { "name": "Muted" },
-      "paused": { "name": "Paused" },
-      "shuffle": { "name": "Shuffle" },
-      "schedule_enabled": { "name": "Schedule enabled" }
+      "paused": { "name": "Paused" }
     },
     "button": {
       "next_slide": { "name": "Next slide" },
@@ -58,6 +57,47 @@
       "play": { "name": "Play" },
       "pause": { "name": "Pause" },
       "ping_presence": { "name": "Ping presence" }
+    },
+    "switch": {
+      "mute_video": { "name": "Mute video" },
+      "shuffle": { "name": "Shuffle" },
+      "schedule_enabled": { "name": "Schedule enabled" },
+      "motion_blanking": { "name": "Motion blanking" },
+      "external_presence": { "name": "External presence" },
+      "collage_mode": { "name": "Collage mode" },
+      "randomize_transitions": { "name": "Randomize transitions" },
+      "blur_edges": { "name": "Blur edges" },
+      "show_clock": { "name": "Show clock" },
+      "clock_24_hour": { "name": "24-hour clock" },
+      "show_caption": { "name": "Show caption" },
+      "show_location": { "name": "Show location" },
+      "show_weather": { "name": "Show weather" },
+      "weather_use_device_location": { "name": "Use device location for weather" },
+      "show_calendar": { "name": "Show calendar" },
+      "video_plays_to_completion": { "name": "Video plays to completion" },
+      "play_live_photos": { "name": "Play Live Photos" },
+      "repeat_live_photos": { "name": "Repeat Live Photos" },
+      "loop_live_photos": { "name": "Loop Live Photos" },
+      "use_per_photo_live_settings": { "name": "Per-photo Live Photo overrides" },
+      "download_cache": { "name": "Download cache" }
+    },
+    "number": {
+      "slide_duration": { "name": "Slide duration" },
+      "transition_duration": { "name": "Transition duration" },
+      "blur_amount": { "name": "Blur amount" },
+      "motion_blank_timeout": { "name": "Motion blank timeout" },
+      "download_cap": { "name": "Download cache cap" },
+      "live_trim_start": { "name": "Live Photo trim start" },
+      "live_trim_end": { "name": "Live Photo trim end" }
+    },
+    "select": {
+      "transition_style": { "name": "Transition style" },
+      "scale_mode": { "name": "Scale mode" },
+      "clock_size": { "name": "Clock size" },
+      "collage_grid_size": { "name": "Collage grid size" }
+    },
+    "text": {
+      "weather_manual_location": { "name": "Weather location" }
     }
   }
 }

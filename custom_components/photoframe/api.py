@@ -44,6 +44,9 @@ class PhotoFrameClient:
     async def async_get_status(self) -> dict[str, Any]:
         return await self._request("GET", "/api/status") or {}
 
+    async def async_get_settings(self) -> dict[str, Any]:
+        return await self._request("GET", "/api/settings") or {}
+
     async def async_set_brightness(self, value: float) -> None:
         await self._request("POST", "/api/brightness", params={"value": f"{value:.3f}"})
 

@@ -1,9 +1,17 @@
-"""Read-only diagnostics and slideshow status sensors, from GET /api/status."""
+"""Read-only diagnostics and slideshow status sensors.
+
+Most come from GET /api/status (live/runtime); the two schedule-time
+sensors come from GET /api/settings instead — the on/off clock times are
+part of the persisted settings blob, but the JSON settings API (unlike the
+HTML settings form) doesn't accept writes to them, so they're read-only
+here rather than a `number`/`time` entity.
+"""
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Literal
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -20,9 +28,18 @@ from homeassistant.util import dt as dt_util
 from .entity import PhotoFrameEntity
 
 
+def _minutes_to_clock(value: Any) -> str | None:
+    if value is None:
+        return None
+    hours, minutes = divmod(int(value), 60)
+    return f"{hours:02d}:{minutes:02d}"
+
+
 @dataclass(frozen=True, kw_only=True)
 class PhotoFrameSensorDescription(SensorEntityDescription):
+    source: Literal["status", "settings"] = "status"
     attributes_from: tuple[str, ...] = ()
+    transform: Callable[[Any], Any] | None = None
 
 
 SENSORS: tuple[PhotoFrameSensorDescription, ...] = (
@@ -73,6 +90,22 @@ SENSORS: tuple[PhotoFrameSensorDescription, ...] = (
         device_class=SensorDeviceClass.TIMESTAMP,
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
+    PhotoFrameSensorDescription(
+        key="onTimeMinutes",
+        translation_key="schedule_on_time",
+        icon="mdi:clock-start",
+        source="settings",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        transform=_minutes_to_clock,
+    ),
+    PhotoFrameSensorDescription(
+        key="offTimeMinutes",
+        translation_key="schedule_off_time",
+        icon="mdi:clock-end",
+        source="settings",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        transform=_minutes_to_clock,
+    ),
 )
 
 
@@ -92,7 +125,9 @@ class PhotoFrameSensor(PhotoFrameEntity, SensorEntity):
 
     @property
     def native_value(self) -> Any:
-        value = self.coordinator.data.get(self.entity_description.key)
+        value = self.coordinator.data[self.entity_description.source].get(self.entity_description.key)
+        if self.entity_description.transform is not None:
+            return self.entity_description.transform(value)
         if self.entity_description.device_class == SensorDeviceClass.TIMESTAMP and value:
             return dt_util.parse_datetime(value)
         return value
@@ -101,4 +136,5 @@ class PhotoFrameSensor(PhotoFrameEntity, SensorEntity):
     def extra_state_attributes(self) -> dict[str, Any] | None:
         if not self.entity_description.attributes_from:
             return None
-        return {key: self.coordinator.data.get(key) for key in self.entity_description.attributes_from}
+        status = self.coordinator.data["status"]
+        return {key: status.get(key) for key in self.entity_description.attributes_from}

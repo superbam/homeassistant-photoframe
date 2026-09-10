@@ -1,4 +1,4 @@
-"""Boolean status flags from GET /api/status."""
+"""Runtime status flags that aren't persisted settings (see switch.py for those)."""
 
 from __future__ import annotations
 
@@ -11,18 +11,8 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .entity import PhotoFrameEntity
 
 BINARY_SENSORS: tuple[BinarySensorEntityDescription, ...] = (
-    BinarySensorEntityDescription(key="muted", translation_key="muted", icon="mdi:volume-off"),
     BinarySensorEntityDescription(
         key="paused", translation_key="paused", icon="mdi:pause", entity_category=EntityCategory.DIAGNOSTIC
-    ),
-    BinarySensorEntityDescription(
-        key="shuffle", translation_key="shuffle", icon="mdi:shuffle", entity_category=EntityCategory.DIAGNOSTIC
-    ),
-    BinarySensorEntityDescription(
-        key="schedule_enabled",
-        translation_key="schedule_enabled",
-        icon="mdi:clock-outline",
-        entity_category=EntityCategory.DIAGNOSTIC,
     ),
 )
 
@@ -41,5 +31,5 @@ class PhotoFrameBinarySensor(PhotoFrameEntity, BinarySensorEntity):
 
     @property
     def is_on(self) -> bool | None:
-        value = self.coordinator.data.get(self.entity_description.key)
+        value = self.coordinator.data["status"].get(self.entity_description.key)
         return bool(value) if value is not None else None

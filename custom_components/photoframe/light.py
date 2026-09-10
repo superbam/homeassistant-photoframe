@@ -1,7 +1,15 @@
 """Represents the frame's display as a dimmable light.
 
-Maps directly onto /api/brightness: 0 blanks the screen, >0 wakes it. This
-mirrors HomeAssistant.md's documented convention for manual power control.
+Plain on/off maps onto `/api/display?action=blank|wake` — the same
+persistent, non-destructive override the web settings page's "Blank now" /
+"Wake now" buttons use. Explicitly setting a brightness level instead maps
+onto `/api/brightness`, which *persists* the configured on-brightness (the
+web page's brightness slider does the same). The two must stay separate:
+earlier this entity used `/api/brightness` for on/off too (brightness 0/1),
+which meant a plain "turn on" — sent with whatever brightness level the
+frontend's slider happened to be at — silently overwrote the frame's
+configured brightness instead of just waking it at whatever brightness was
+already set, leaving it stuck dim after a blank/wake cycle.
 """
 
 from __future__ import annotations
@@ -33,25 +41,20 @@ class PhotoFrameDisplay(PhotoFrameEntity, LightEntity):
 
     @property
     def is_on(self) -> bool | None:
-        return bool(self.coordinator.data.get("on"))
+        return bool(self.coordinator.data["status"].get("on"))
 
     @property
     def brightness(self) -> int | None:
-        value = self.coordinator.data.get("brightness")
+        value = self.coordinator.data["status"].get("brightness")
         return round(float(value) * 255) if value is not None else None
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         if ATTR_BRIGHTNESS in kwargs:
-            fraction = kwargs[ATTR_BRIGHTNESS] / 255
+            await self.coordinator.client.async_set_brightness(kwargs[ATTR_BRIGHTNESS] / 255)
         else:
-            # No level requested — restore the last known brightness (or full
-            # on if the frame was already at 0, e.g. previously blanked).
-            fraction = self.coordinator.data.get("brightness") or 1.0
-            if fraction <= 0:
-                fraction = 1.0
-        await self.coordinator.client.async_set_brightness(fraction)
+            await self.coordinator.client.async_set_display("wake")
         await self.coordinator.async_request_refresh()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
-        await self.coordinator.client.async_set_brightness(0.0)
+        await self.coordinator.client.async_set_display("blank")
         await self.coordinator.async_request_refresh()
