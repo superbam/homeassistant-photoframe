@@ -122,9 +122,11 @@ class PhotoFrameSwitch(PhotoFrameEntity, SwitchEntity):
         return bool(value) if value is not None else None
 
     async def async_turn_on(self, **kwargs) -> None:
-        await self.coordinator.client.async_set_settings({self.entity_description.key: True})
-        await self.coordinator.async_request_refresh()
+        async with self.coordinator.async_writing():
+            await self.coordinator.client.async_set_settings({self.entity_description.key: True})
+            await self.coordinator.async_request_refresh()
 
     async def async_turn_off(self, **kwargs) -> None:
-        await self.coordinator.client.async_set_settings({self.entity_description.key: False})
-        await self.coordinator.async_request_refresh()
+        async with self.coordinator.async_writing():
+            await self.coordinator.client.async_set_settings({self.entity_description.key: False})
+            await self.coordinator.async_request_refresh()

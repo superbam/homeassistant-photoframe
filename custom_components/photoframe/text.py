@@ -51,5 +51,6 @@ class PhotoFrameText(PhotoFrameEntity, TextEntity):
         return self.coordinator.data["settings"].get(self.entity_description.key)
 
     async def async_set_value(self, value: str) -> None:
-        await self.coordinator.client.async_set_settings({self.entity_description.key: value})
-        await self.coordinator.async_request_refresh()
+        async with self.coordinator.async_writing():
+            await self.coordinator.client.async_set_settings({self.entity_description.key: value})
+            await self.coordinator.async_request_refresh()

@@ -79,5 +79,6 @@ class PhotoFrameSelect(PhotoFrameEntity, SelectEntity):
 
     async def async_select_option(self, option: str) -> None:
         sent = int(option) if self.entity_description.int_value else option
-        await self.coordinator.client.async_set_settings({self.entity_description.key: sent})
-        await self.coordinator.async_request_refresh()
+        async with self.coordinator.async_writing():
+            await self.coordinator.client.async_set_settings({self.entity_description.key: sent})
+            await self.coordinator.async_request_refresh()

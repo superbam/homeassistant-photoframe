@@ -140,8 +140,9 @@ class PhotoFrameBrightness(PhotoFrameEntity, NumberEntity):
         return round(float(value) * 100) if value is not None else None
 
     async def async_set_native_value(self, value: float) -> None:
-        await self.coordinator.client.async_set_brightness(value / 100)
-        await self.coordinator.async_request_refresh()
+        async with self.coordinator.async_writing():
+            await self.coordinator.client.async_set_brightness(value / 100)
+            await self.coordinator.async_request_refresh()
 
 
 class PhotoFrameNumber(PhotoFrameEntity, NumberEntity):
@@ -158,5 +159,6 @@ class PhotoFrameNumber(PhotoFrameEntity, NumberEntity):
 
     async def async_set_native_value(self, value: float) -> None:
         sent = int(value) if self.entity_description.int_value else value
-        await self.coordinator.client.async_set_settings({self.entity_description.key: sent})
-        await self.coordinator.async_request_refresh()
+        async with self.coordinator.async_writing():
+            await self.coordinator.client.async_set_settings({self.entity_description.key: sent})
+            await self.coordinator.async_request_refresh()

@@ -49,12 +49,14 @@ class PhotoFrameDisplay(PhotoFrameEntity, LightEntity):
         return round(float(value) * 255) if value is not None else None
 
     async def async_turn_on(self, **kwargs: Any) -> None:
-        if ATTR_BRIGHTNESS in kwargs:
-            await self.coordinator.client.async_set_brightness(kwargs[ATTR_BRIGHTNESS] / 255)
-        else:
-            await self.coordinator.client.async_set_display("wake")
-        await self.coordinator.async_request_refresh()
+        async with self.coordinator.async_writing():
+            if ATTR_BRIGHTNESS in kwargs:
+                await self.coordinator.client.async_set_brightness(kwargs[ATTR_BRIGHTNESS] / 255)
+            else:
+                await self.coordinator.client.async_set_display("wake")
+            await self.coordinator.async_request_refresh()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
-        await self.coordinator.client.async_set_display("blank")
-        await self.coordinator.async_request_refresh()
+        async with self.coordinator.async_writing():
+            await self.coordinator.client.async_set_display("blank")
+            await self.coordinator.async_request_refresh()

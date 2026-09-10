@@ -21,6 +21,8 @@ they transparently keep getting today's pure-polling behavior.
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from datetime import timedelta
 import logging
 from typing import Any, TypedDict
@@ -64,6 +66,28 @@ class PhotoFrameCoordinator(DataUpdateCoordinator[PhotoFrameData]):
         # own update listener and reload the whole entry on the very first
         # push, tearing down the coordinator mid-flight.
         self.webhook_seen = False
+        # Counts entity writes currently between their POST and the refresh
+        # that confirms it (see `async_writing()`) — while >0, a webhook push
+        # is deferred rather than published. A push's payload only reports
+        # `status`, but publishing it still means re-broadcasting whatever
+        # `self.data["settings"]` currently is, and mid-write that's the
+        # *pre*-write snapshot: the on-device change that triggered this
+        # very push already landed there before the push fired, but the
+        # matching GET this entity is about to make hasn't come back yet, so
+        # every entity reading `settings` would flash back to the old value
+        # for one tick before the pending refresh corrects it moments later.
+        # Skipping the push here costs nothing — that refresh fetches fresh
+        # status too, so no information is actually lost, only deferred.
+        self._pending_writes = 0
+
+    @asynccontextmanager
+    async def async_writing(self) -> AsyncIterator[None]:
+        """Wrap an entity's own POST-then-refresh so pushes defer to it instead of racing it."""
+        self._pending_writes += 1
+        try:
+            yield
+        finally:
+            self._pending_writes -= 1
 
     async def _async_update_data(self) -> PhotoFrameData:
         try:
@@ -78,7 +102,7 @@ class PhotoFrameCoordinator(DataUpdateCoordinator[PhotoFrameData]):
     def async_handle_push(self, payload: dict[str, Any]) -> None:
         """Merge an instant webhook push and defer the next fallback poll."""
         self.webhook_seen = True
-        if not self.data:
+        if not self.data or self._pending_writes:
             return
         changes = {k: v for k, v in payload.items() if k in _PUSHABLE_STATUS_KEYS}
         if not changes:
