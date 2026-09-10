@@ -1,0 +1,63 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "description": "Enter the frame's local address and the credentials shown on its Settings screen (Display → Password → the eye icon).",
+        "data": {
+          "host": "Host or IP address",
+          "port": "Port",
+          "username": "Username",
+          "password": "Password"
+        }
+      },
+      "zeroconf_confirm": {
+        "description": "Found a photo frame named \"{name}\" on the network. Enter the credentials shown on its Settings screen (Display → Password → the eye icon) to add it.",
+        "data": {
+          "username": "Username",
+          "password": "Password"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Incorrect username or password.",
+      "cannot_connect": "Couldn't reach the frame at that address. Make sure the app is open and in the foreground.",
+      "unknown": "Unexpected error."
+    },
+    "abort": {
+      "already_configured": "This frame is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "data": {
+          "scan_interval": "Polling interval (seconds)"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "photo_count": { "name": "Photos" },
+      "slide_position": { "name": "Slide position" },
+      "slide_duration": { "name": "Slide duration" },
+      "transition": { "name": "Transition style" },
+      "memory_usage": { "name": "Memory usage" },
+      "peak_memory_usage": { "name": "Peak memory usage" },
+      "last_sync": { "name": "Last library sync" }
+    },
+    "binary_sensor": {
+      "muted": { "name": "Muted" },
+      "paused": { "name": "Paused" },
+      "shuffle": { "name": "Shuffle" },
+      "schedule_enabled": { "name": "Schedule enabled" }
+    },
+    "button": {
+      "next_slide": { "name": "Next slide" },
+      "previous_slide": { "name": "Previous slide" },
+      "play": { "name": "Play" },
+      "pause": { "name": "Pause" },
+      "ping_presence": { "name": "Ping presence" }
+    }
+  }
+}
