@@ -34,7 +34,7 @@
           "scan_interval": "Fallback polling interval (seconds)"
         },
         "data_description": {
-          "scan_interval": "Only used when the frame isn't pushing instant updates — see the webhook URL notification shown after setup."
+          "scan_interval": "Only used when the frame isn't pushing instant updates (configured automatically — this is just the fallback)."
         }
       }
     }

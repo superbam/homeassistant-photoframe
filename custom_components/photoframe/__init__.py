@@ -8,6 +8,8 @@ its normal state) for the frame to answer.
 
 from __future__ import annotations
 
+import logging
+
 from aiohttp import web
 from homeassistant.components import persistent_notification, webhook
 from homeassistant.config_entries import ConfigEntry
@@ -15,9 +17,11 @@ from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_PORT, CONF_USERNA
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-from .api import PhotoFrameClient
+from .api import PhotoFrameAuthError, PhotoFrameClient, PhotoFrameConnectionError
 from .const import CONF_SCAN_INTERVAL, CONF_WEBHOOK_ID, DEFAULT_SCAN_INTERVAL, DOMAIN
 from .coordinator import PhotoFrameCoordinator
+
+_LOGGER = logging.getLogger(__name__)
 
 PLATFORMS = [
     Platform.LIGHT,
@@ -67,19 +71,34 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     webhook.async_register(hass, DOMAIN, f"Photo Frame ({entry.title})", webhook_id, _handle_webhook)
     entry.async_on_unload(lambda: webhook.async_unregister(hass, webhook_id))
 
+    # Auto-configure rather than asking the user to copy/paste: the frame's
+    # `haWebhookURL` setting is reachable through the same authenticated
+    # client already used for polling. Skipped when it's already correct, so
+    # a restart doesn't re-write (and re-trigger settingsChanged() on) the
+    # frame for no reason. A frame running an app build that predates this
+    # field just ignores the unknown JSON key — harmless no-op, not an error.
     url = webhook.async_generate_url(hass, webhook_id)
-    persistent_notification.async_create(
-        hass,
-        (
-            f"For instant on/off updates, paste this URL into **{entry.title}**'s "
-            f"Home Assistant webhook URL setting on the frame itself (web settings "
-            f"page, or the on-device Settings screen):\n\n`{url}`\n\n"
-            f"Optional — without it, this integration just keeps polling every "
-            f"{scan_interval}s like before."
-        ),
-        title="Photo Frame: instant updates available",
-        notification_id=notification_id,
-    )
+    current_url = coordinator.data["settings"].get("haWebhookURL") if coordinator.data else None
+    if current_url != url:
+        try:
+            await client.async_set_settings({"haWebhookURL": url})
+        except (PhotoFrameAuthError, PhotoFrameConnectionError) as err:
+            _LOGGER.warning(
+                "Could not auto-configure %s's webhook URL, falling back to manual setup: %s", entry.title, err
+            )
+            persistent_notification.async_create(
+                hass,
+                (
+                    f"Couldn't automatically configure instant updates for "
+                    f"**{entry.title}** ({err}). Paste this URL into its Home "
+                    f"Assistant webhook URL setting manually (web settings page, "
+                    f"or the on-device Settings screen):\n\n`{url}`\n\n"
+                    f"Optional — without it, this integration just keeps polling "
+                    f"every {scan_interval}s like before."
+                ),
+                title="Photo Frame: instant updates need manual setup",
+                notification_id=notification_id,
+            )
 
     entry.runtime_data = coordinator
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
@@ -93,3 +112,21 @@ async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> Non
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+
+
+async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Best-effort: stop the frame pushing to a webhook nobody's listening on anymore.
+
+    Only fires when the entry is actually deleted, not on every reload/
+    restart (unlike `async_unload_entry`, which also runs then) — a stale
+    URL is harmless either way (the frame's push is already fire-and-forget,
+    silently dropped on failure), this is just tidiness.
+    """
+    session = async_get_clientsession(hass, verify_ssl=False)
+    client = PhotoFrameClient(
+        session, entry.data[CONF_HOST], entry.data[CONF_PORT], entry.data[CONF_USERNAME], entry.data[CONF_PASSWORD]
+    )
+    try:
+        await client.async_set_settings({"haWebhookURL": ""})
+    except (PhotoFrameAuthError, PhotoFrameConnectionError):
+        pass

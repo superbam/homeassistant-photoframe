@@ -78,15 +78,18 @@ last poll — up to the configured interval — which is slow for a
 schedule/presence-triggered blank or wake that happens on the frame itself
 rather than through Home Assistant.
 
-Setup creates a persistent notification with a webhook URL, e.g.:
-```
-https://your-ha:8123/api/webhook/<long-id>
-```
-Paste it into the frame's **Home Assistant webhook URL** setting (web
-settings page, or the on-device Settings screen) and the frame will POST its
-on/off state the instant it changes — the notification dismisses itself once
-the first push arrives. Leave it blank to skip this entirely; polling still
-works exactly as before.
+No setup needed — on every startup/reload, the integration generates a
+webhook URL and writes it to the frame's `haWebhookURL` setting through the
+same authenticated connection it already polls with (a no-op once it's
+already set correctly, so this doesn't spam the frame with writes on every
+restart). The frame then POSTs its on/off state there the instant it
+changes. If the frame's unreachable at that moment, it falls back to a
+persistent notification with the URL to paste in yourself (web settings
+page, or the on-device Settings screen) — auto-configuring picks back up on
+the next restart, and the notification dismisses itself once a push arrives.
+Clearing `haWebhookURL` on the frame (or removing the integration, which
+clears it for you) disables this entirely; polling still works exactly as
+before either way.
 
 This isn't a replacement for polling, it's a supplement: if nothing (a push
 or a poll) has been heard from the frame in one fallback-polling-interval's
