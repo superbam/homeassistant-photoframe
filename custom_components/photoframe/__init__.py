@@ -59,8 +59,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     notification_id = f"{DOMAIN}_{entry.entry_id}_webhook"
 
     async def _handle_webhook(hass: HomeAssistant, webhook_id: str, request: web.Request) -> None:
+        # HA's HomeAssistantRequest overrides aiohttp's Request.json() and drops the
+        # content_type kwarg entirely (it never validates Content-Type, unlike upstream
+        # aiohttp) — so calling with no args already gets the "parse regardless of
+        # header" behavior this used to need content_type=None for.
         try:
-            payload = await request.json(content_type=None)
+            payload = await request.json()
         except ValueError:
             return
         was_seen = coordinator.webhook_seen
